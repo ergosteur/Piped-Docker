@@ -1,0 +1,76 @@
+{
+	servers :443 {
+		protocol {
+			experimental_http3
+		}
+	}
+}
+
+piped.ergosteur.com {
+	reverse_proxy pipedfrontend:80
+	header {
+		# disable FLoC tracking
+		Permissions-Policy interest-cohort=()
+
+		# enable HSTS
+		Strict-Transport-Security max-age=31536000;
+
+		# keep referrer data off
+		Referrer-Policy no-referrer
+
+		# prevent for appearing in search engine for private instances (option)
+		#X-Robots-Tag noindex
+	}
+}
+
+api.piped.ergosteur.com {
+	reverse_proxy varnish:80
+	header {
+		# disable FLoC tracking
+		Permissions-Policy interest-cohort=()
+
+		# enable HSTS
+		Strict-Transport-Security max-age=31536000;
+
+		# keep referrer data off
+		Referrer-Policy no-referrer
+
+		# prevent for appearing in search engine for private instances (option)
+		#X-Robots-Tag noindex
+	}
+}
+
+proxy.piped.ergosteur.com {
+	@ytproxy path /videoplayback* /api/v4/* /api/manifest/*
+
+	header {
+		# disable FLoC tracking
+		Permissions-Policy interest-cohort=()
+
+		# enable HSTS
+		Strict-Transport-Security max-age=31536000;
+
+		# keep referrer data off
+		Referrer-Policy no-referrer
+
+		# prevent for appearing in search engine for private instances (option)
+		#X-Robots-Tag noindex
+	}
+
+	route {
+		header @ytproxy {
+			Cache-Control private always
+		}
+
+		header / {
+			Cache-Control "public, max-age=604800"
+		}
+
+		reverse_proxy unix//var/run/ytproxy/http-proxy.sock {
+			header_up -CF-Connecting-IP
+			header_up -X-Forwarded-For
+			header_down -etag
+			header_down -alt-svc
+		}
+	}
+}
